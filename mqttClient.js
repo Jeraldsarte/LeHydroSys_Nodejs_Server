@@ -43,6 +43,8 @@ client.on('message', (topic, message) => {
             console.log('✅ Data saved to DB');
         }
     });
+    console.log('👉 Insert Query:', query);
+    console.log('👉 Values:', [temperature, humidity, waterTemp, tds, ph, distance]);
 });
 
 client.on('error', (err) => {
