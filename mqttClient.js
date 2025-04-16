@@ -30,21 +30,37 @@ client.on('message', (topic, message) => {
     const payload = message.toString();
     console.log('📥 MQTT Message:', payload);
 
-    const [temperature, humidity, waterTemp, tds, ph, distance] = payload.split(',');
+    try {
+        const params = new URLSearchParams(payload);
 
-    const query = `
-        INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    db.query(query, [temperature, humidity, waterTemp, tds, ph, distance], (err) => {
-        if (err) {
-            console.error('❌ DB Insert Error:', err);
-        } else {
-            console.log('✅ Data saved to DB');
-        }
-    });
-    console.log('👉 Insert Query:', query);
-    console.log('👉 Values:', [temperature, humidity, waterTemp, tds, ph, distance]);
+        const temperature = parseFloat(params.get("field1"));
+        const humidity = parseFloat(params.get("field2"));
+        const waterTemp = parseFloat(params.get("field3"));
+        const tds = parseFloat(params.get("field4"));
+        const ph = parseFloat(params.get("field5"));
+        const distance = parseFloat(params.get("field6"));
+
+        const query = `
+            INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [temperature, humidity, waterTemp, tds, ph, distance];
+
+        db.query(query, values, (err) => {
+            if (err) {
+                console.error('❌ DB Insert Error:', err);
+            } else {
+                console.log('✅ Data saved to DB');
+            }
+        });
+
+        console.log('👉 Insert Query:', query);
+        console.log('👉 Values:', values);
+
+    } catch (err) {
+        console.error('❌ Payload Parse Error:', err.message);
+    }
 });
 
 client.on('error', (err) => {
