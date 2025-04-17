@@ -3,19 +3,23 @@ const fs = require('fs');
 const db = require('./db');
 require('dotenv').config();
 
-// MQTT connection options with authentication
+// Read CA certificate
+const caCert = fs.readFileSync('./certs/emqxsl_ca.crt'); // Update the path if needed
+
+// MQTT connection options with certificate validation
 const options = {
     port: parseInt(process.env.MQTT_PORT, 10),
     protocol: 'mqtts',
     username: process.env.MQTT_USERNAME,
     password: process.env.MQTT_PASSWORD,
-    rejectUnauthorized: false // ⚠️ Use true for production with valid certs
+    ca: caCert,
+    rejectUnauthorized: true // ✅ Enforce server certificate validation
 };
 
 const client = mqtt.connect(process.env.MQTT_BROKER, options);
 
 client.on('connect', () => {
-    console.log('✅ Securely connected to EMQX MQTT broker');
+    console.log('✅ Securely connected to EMQX MQTT broker with certificate validation');
 
     client.subscribe(process.env.MQTT_TOPIC, (err) => {
         if (!err) {
@@ -40,12 +44,18 @@ client.on('message', (topic, message) => {
         const ph = parseFloat(params.get("field5"));
         const distance = parseFloat(params.get("field6"));
 
+        const values = [temperature, humidity, waterTemp, tds, ph, distance];
+
+        // Validate all values
+        if (values.some(v => isNaN(v))) {
+            console.warn("⚠️ Invalid or missing fields in payload:", values);
+            throw new Error("Invalid sensor data (NaN values)");
+        }
+
         const query = `
             INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance)
             VALUES (?, ?, ?, ?, ?, ?)
         `;
-
-        const values = [temperature, humidity, waterTemp, tds, ph, distance];
 
         db.query(query, values, (err) => {
             if (err) {
