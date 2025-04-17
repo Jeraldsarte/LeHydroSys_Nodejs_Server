@@ -28,4 +28,55 @@ router.get('/relay', (req, res) => {
     });
 });
 
+// Add route to get sensor data based on the selected time range
+router.get('/get_sensor_data', (req, res) => {
+    const range = req.query.range || 'day'; // Default to 'day' if not provided
+    const query = buildQueryForTimeRange(range);
+
+    db.query(query, (err, results) => {
+        if (err) return res.status(500).send(err);
+
+        // Map the results to the format expected by the Android app
+        const data = results.map(row => ({
+            air_temp: row.air_temp,
+            humidity: row.humidity,
+            water_temp: row.water_temp,
+            water_level: row.water_level,
+            ph: row.ph,
+            tds: row.tds,
+            timestamp: row.timestamp // Include timestamp if needed for graph plotting
+        }));
+
+        res.json(data); // Return the sensor data as JSON
+    });
+});
+
+// Helper function to build the query for different time ranges
+function buildQueryForTimeRange(range) {
+    let query = 'SELECT * FROM sensor_data';
+
+    const currentDate = new Date();
+    let startDate;
+
+    switch (range) {
+        case 'week':
+            startDate = new Date(currentDate.setDate(currentDate.getDate() - 7));
+            break;
+        case 'month':
+            startDate = new Date(currentDate.setMonth(currentDate.getMonth() - 1));
+            break;
+        case 'year':
+            startDate = new Date(currentDate.setFullYear(currentDate.getFullYear() - 1));
+            break;
+        case 'day':
+        default:
+            startDate = new Date(currentDate.setHours(0, 0, 0, 0)); // Midnight of today
+            break;
+    }
+
+    query += ` WHERE timestamp >= '${startDate.toISOString()}' ORDER BY timestamp`;
+
+    return query;
+}
+
 module.exports = router;
