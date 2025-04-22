@@ -28,6 +28,21 @@ router.get('/relay', (req, res) => {
     });
 });
 
+// Get relay commands for ESP32
+router.get('/get_commands', (req, res) => {
+    db.query('SELECT relay1, relay2 FROM relay_state WHERE id = 1', (err, results) => {
+        if (err) return res.status(500).send(err);
+
+        const relay1Command = results[0].relay1 ? 'relay1_on' : 'relay1_off';
+        const relay2Command = results[0].relay2 ? 'relay2_on' : 'relay2_off';
+
+        res.json({
+            relay1: relay1Command,
+            relay2: relay2Command
+        });
+    });
+});
+
 // Add route to get sensor data based on the selected time range
 router.get('/get_sensor_data', (req, res) => {
     const range = req.query.range || 'day'; // Default to 'day' if not provided
