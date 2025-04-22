@@ -18,6 +18,11 @@ const options = {
 
 const client = mqtt.connect(process.env.MQTT_BROKER, options);
 
+// To control the rate of publishing data
+let lastPublishedTime = 0; // Keep track of the last published time (in ms)
+
+const PUBLISH_INTERVAL = 1000; // Set to 1000ms (1 second) or adjust to your preferred interval
+
 client.on('connect', () => {
     console.log('✅ Securely connected to EMQX MQTT broker with certificate validation');
 
@@ -52,6 +57,7 @@ client.on('message', (topic, message) => {
             throw new Error("Invalid sensor data (NaN values)");
         }
 
+        // Insert into DB
         const query = `
             INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -68,6 +74,24 @@ client.on('message', (topic, message) => {
         console.log('👉 Insert Query:', query);
         console.log('👉 Values:', values);
 
+        // Control MQTT publishing rate based on time
+        const currentTime = Date.now();
+        if (currentTime - lastPublishedTime >= PUBLISH_INTERVAL) {
+            const mqttPayload = `field1=${temperature}&field2=${humidity}&field3=${waterTemp}&field4=${tds}&field5=${ph}&field6=${distance}`;
+            
+            // Publish to MQTT
+            client.publish(process.env.MQTT_TOPIC, mqttPayload, { qos: 1 }, (err) => {
+                if (err) {
+                    console.error('❌ MQTT Publish Error:', err);
+                } else {
+                    console.log('📡 Data published to broker:', mqttPayload);
+                    lastPublishedTime = currentTime; // Update last published time
+                }
+            });
+        } else {
+            console.log('🕑 Waiting to publish. Interval not met yet.');
+        }
+
     } catch (err) {
         console.error('❌ Payload Parse Error:', err.message);
     }
@@ -75,4 +99,11 @@ client.on('message', (topic, message) => {
 
 client.on('error', (err) => {
     console.error('❌ MQTT Client Error:', err);
+});
+
+process.on('SIGINT', () => {
+    console.log('Gracefully shutting down...');
+    client.end();  // Close MQTT connection
+    db.end();      // Close DB connection
+    process.exit();
 });
