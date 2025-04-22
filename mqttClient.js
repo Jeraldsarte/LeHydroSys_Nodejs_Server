@@ -40,18 +40,34 @@ client.on('message', (topic, message) => {
     console.log('📥 MQTT Message:', payload);
 
     try {
-        const params = new URLSearchParams(payload);
+        let temperature, humidity, waterTemp, tds, ph, distance;
 
-        const temperature = parseFloat(params.get("field1"));
-        const humidity = parseFloat(params.get("field2"));
-        const waterTemp = parseFloat(params.get("field3"));
-        const tds = parseFloat(params.get("field4"));
-        const ph = parseFloat(params.get("field5"));
-        const distance = parseFloat(params.get("field6"));
+        if (payload.includes('field1=')) {
+            // 🌐 URL-encoded format
+            const params = new URLSearchParams(payload);
+            temperature = parseFloat(params.get("field1"));
+            humidity = parseFloat(params.get("field2"));
+            waterTemp = parseFloat(params.get("field3"));
+            tds = parseFloat(params.get("field4"));
+            ph = parseFloat(params.get("field5"));
+            distance = parseFloat(params.get("field6"));
+        } else if (payload.includes(',')) {
+            // 📄 Comma-separated values
+            const parts = payload.split(',').map(Number);
+            if (parts.length === 6) {
+                [temperature, humidity, waterTemp, tds, ph, distance] = parts;
+            } else {
+                console.warn("⚠️ Payload does not have exactly 6 fields:", parts);
+                throw new Error("Invalid comma-separated sensor data");
+            }
+        } else {
+            // 🕑 Ignore other messages (e.g., "Current Time: xx")
+            console.warn("⚠️ Unrecognized payload format, ignoring:", payload);
+            return;
+        }
 
         const values = [temperature, humidity, waterTemp, tds, ph, distance];
 
-        // Validate all values
         if (values.some(v => isNaN(v))) {
             console.warn("⚠️ Invalid or missing fields in payload:", values);
             throw new Error("Invalid sensor data (NaN values)");
@@ -73,24 +89,6 @@ client.on('message', (topic, message) => {
 
         console.log('👉 Insert Query:', query);
         console.log('👉 Values:', values);
-
-        // Control MQTT publishing rate based on time
-        const currentTime = Date.now();
-        if (currentTime - lastPublishedTime >= PUBLISH_INTERVAL) {
-            const mqttPayload = `field1=${temperature}&field2=${humidity}&field3=${waterTemp}&field4=${tds}&field5=${ph}&field6=${distance}`;
-            
-            // Publish to MQTT
-            client.publish(process.env.MQTT_TOPIC, mqttPayload, { qos: 1 }, (err) => {
-                if (err) {
-                    console.error('❌ MQTT Publish Error:', err);
-                } else {
-                    console.log('📡 Data published to broker:', mqttPayload);
-                    lastPublishedTime = currentTime; // Update last published time
-                }
-            });
-        } else {
-            console.log('🕑 Waiting to publish. Interval not met yet.');
-        }
 
     } catch (err) {
         console.error('❌ Payload Parse Error:', err.message);
