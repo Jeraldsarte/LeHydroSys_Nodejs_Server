@@ -13,7 +13,7 @@ router.get('/data/latest', (req, res) => {
 // Post relay command
 router.post('/relay', (req, res) => {
     const { relay1, relay2 } = req.body;
-    const query = 'UPDATE relay_state SET relay1 = ?, relay2 = ? WHERE id = 1';
+    const query = 'UPDATE relay_state SET relay1 = ?, relay2 = ?, last_updated = NOW() WHERE id = 1';
     db.query(query, [relay1, relay2], (err) => {
         if (err) return res.status(500).send(err);
         res.send('Relay state updated');
@@ -28,18 +28,31 @@ router.get('/relay', (req, res) => {
     });
 });
 
-// Get relay commands for ESP32
+let lastFetchTime = null; // Store the last fetch time for the ESP32
+
 router.get('/get_commands', (req, res) => {
-    db.query('SELECT relay1, relay2 FROM relay_state WHERE id = 1', (err, results) => {
+    const query = 'SELECT relay1, relay2, last_updated FROM relay_state WHERE id = 1';
+    db.query(query, (err, results) => {
         if (err) return res.status(500).send(err);
 
-        const relay1Command = results[0].relay1 ? 'relay1_on' : 'relay1_off';
-        const relay2Command = results[0].relay2 ? 'relay2_on' : 'relay2_off';
+        const { relay1, relay2, last_updated } = results[0];
 
-        res.json({
-            relay1: relay1Command,
-            relay2: relay2Command
-        });
+        // Check if the relay state was updated since the last fetch
+        if (!lastFetchTime || new Date(last_updated) > new Date(lastFetchTime)) {
+            const relay1Command = relay1 ? 'relay1_on' : 'relay1_off';
+            const relay2Command = relay2 ? 'relay2_on' : 'relay2_off';
+
+            // Update the last fetch time
+            lastFetchTime = last_updated;
+
+            res.json({
+                relay1: relay1Command,
+                relay2: relay2Command
+            });
+        } else {
+            // No updates, return an empty response
+            res.json({});
+        }
     });
 });
 
