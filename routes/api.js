@@ -57,10 +57,9 @@ router.get('/get_commands', (req, res) => {
 });
 
 router.get('/api/get_sensor_data', (req, res) => {
-    const { range, limit = 100, offset = 0 } = req.query;
+    const { range, specific, limit = 100, offset = 0 } = req.query;
 
-    // Adjust the query based on the range (e.g., day, week, month)
-    const query = `
+    let query = `
         SELECT temperature, humidity, waterTemp, tds, ph, distance, timestamp
         FROM sensor_data
         WHERE timestamp BETWEEN ? AND ?
@@ -68,8 +67,31 @@ router.get('/api/get_sensor_data', (req, res) => {
         LIMIT ? OFFSET ?;
     `;
 
-    const startDate = getStartDateForRange(range); // Function to calculate start date
-    const endDate = new Date();
+    let startDate, endDate;
+    if (specific) {
+        if (range === 'day') {
+            startDate = new Date(specific);
+            endDate = new Date(specific);
+            endDate.setDate(endDate.getDate() + 1);
+        } else if (range === 'week') {
+            const [year, week] = specific.split('-W');
+            const firstDayOfWeek = new Date(year, 0, (week - 1) * 7 + 1);
+            startDate = firstDayOfWeek;
+            endDate = new Date(firstDayOfWeek);
+            endDate.setDate(endDate.getDate() + 7);
+        } else if (range === 'month') {
+            startDate = new Date(specific + '-01');
+            endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + 1);
+        } else if (range === 'year') {
+            startDate = new Date(specific + '-01-01');
+            endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+    } else {
+        startDate = getStartDateForRange(range);
+        endDate = new Date();
+    }
 
     db.query(query, [startDate, endDate, parseInt(limit), parseInt(offset)], (err, results) => {
         if (err) {
