@@ -73,22 +73,38 @@ client.on('message', (topic, message) => {
             throw new Error("Invalid sensor data (NaN values)");
         }
 
+        // Get the current timestamp in the Philippines' time zone (UTC+8)
+        const now = new Date();
+        const options = { timeZone: 'Asia/Manila', hour12: false };
+        const philippinesTime = new Intl.DateTimeFormat('en-US', {
+            ...options,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        }).format(now);
+
+        // Format the timestamp for MySQL (YYYY-MM-DD HH:mm:ss)
+        const formattedTimestamp = philippinesTime.replace(',', '').replace(/\//g, '-').replace(' ', 'T').replace('T', ' ');
+
         // Insert into DB
         const query = `
-            INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
 
-        db.query(query, values, (err) => {
+        db.query(query, [...values, formattedTimestamp], (err) => {
             if (err) {
                 console.error('❌ DB Insert Error:', err);
             } else {
-                console.log('✅ Data saved to DB');
+                console.log('✅ Data saved to DB with timestamp:', formattedTimestamp);
             }
         });
 
         console.log('👉 Insert Query:', query);
-        console.log('👉 Values:', values);
+        console.log('👉 Values:', [...values, formattedTimestamp]);
 
     } catch (err) {
         console.error('❌ Payload Parse Error:', err.message);
