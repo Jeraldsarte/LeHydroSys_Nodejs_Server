@@ -56,7 +56,7 @@ router.get('/get_commands', (req, res) => {
     });
 });
 
-router.get('/api/get_sensor_data', (req, res) => {
+router.get('/get_sensor_data', (req, res) => {
     const { range, specific, limit = 100, offset = 0 } = req.query;
 
     let query = `
