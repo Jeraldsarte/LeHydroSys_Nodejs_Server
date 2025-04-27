@@ -52,7 +52,6 @@ client.on('message', (topic, message) => {
             ph = parseFloat(params.get("field5"));
             distance = parseFloat(params.get("field6"));
         } else if (payload.includes(',')) {
-            // 📄 Comma-separated values
             const parts = payload.split(',').map(Number);
             if (parts.length === 6) {
                 [temperature, humidity, waterTemp, tds, ph, distance] = parts;
