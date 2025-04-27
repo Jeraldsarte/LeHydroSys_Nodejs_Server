@@ -1,14 +1,15 @@
 const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-require('./mqttClient');
-
+const path = require('path');
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Other routes (e.g., API routes)
 app.use('/api', require('./routes/api'));
 
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🌐 Server is running on http://localhost:${PORT}`);
 });
