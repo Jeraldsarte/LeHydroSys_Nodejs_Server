@@ -71,106 +71,116 @@
         <canvas id="tdsChart"></canvas>
     </div>
 
-    <script>
-        // Show appropriate input field based on range selection
-        document.getElementById('range').addEventListener('change', function () {
-            const range = this.value;
-            document.getElementById('specificDate').style.display = range === 'day' ? 'inline-block' : 'none';
-            document.getElementById('specificWeek').style.display = range === 'week' ? 'inline-block' : 'none';
-            document.getElementById('specificMonth').style.display = range === 'month' ? 'inline-block' : 'none';
-            document.getElementById('specificYear').style.display = range === 'year' ? 'inline-block' : 'none';
-        });
+<script>
+    // Global variables to store chart instances
+    const charts = {};
 
-        // Fetch and display data based on user selection
-        function fetchAndDisplayData() {
-            const range = document.getElementById('range').value;
-            let specificValue;
+    // Show appropriate input field based on range selection
+    document.getElementById('range').addEventListener('change', function () {
+        const range = this.value;
+        document.getElementById('specificDate').style.display = range === 'day' ? 'inline-block' : 'none';
+        document.getElementById('specificWeek').style.display = range === 'week' ? 'inline-block' : 'none';
+        document.getElementById('specificMonth').style.display = range === 'month' ? 'inline-block' : 'none';
+        document.getElementById('specificYear').style.display = range === 'year' ? 'inline-block' : 'none';
+    });
 
-            if (range === 'day') {
-                specificValue = document.getElementById('specificDate').value;
-            } else if (range === 'week') {
-                specificValue = document.getElementById('specificWeek').value;
-            } else if (range === 'month') {
-                specificValue = document.getElementById('specificMonth').value;
-            } else if (range === 'year') {
-                specificValue = document.getElementById('specificYear').value;
-            }
+    // Fetch and display data based on user selection
+    function fetchAndDisplayData() {
+        const range = document.getElementById('range').value;
+        let specificValue;
 
-            // Build the API URL with query parameters
-            const url = new URL('https://lehydrosys-sqfy.onrender.com/api/get_sensor_data');
-            url.searchParams.append('range', range);
-            if (specificValue) {
-                url.searchParams.append('specific', specificValue);
-            }
-
-            // Fetch data from the server
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data || data.length === 0) {
-                        alert('No data available for the selected range.');
-                        return;
-                    }
-
-                    const labels = data.map(item => item.timestamp);
-                    const tempData = data.map(item => item.temperature);
-                    const humidityData = data.map(item => item.humidity);
-                    const waterTempData = data.map(item => item.waterTemp);
-                    const waterLevelData = data.map(item => item.distance);
-                    const phData = data.map(item => item.ph);
-                    const tdsData = data.map(item => item.tds);
-
-                    // Create charts
-                    createChart('tempChart', 'Air Temperature', labels, tempData, 'red');
-                    createChart('humidityChart', 'Humidity', labels, humidityData, 'green');
-                    createChart('waterTempChart', 'Water Temperature', labels, waterTempData, 'blue');
-                    createChart('waterLevelChart', 'Water Level', labels, waterLevelData, 'yellow');
-                    createChart('phChart', 'pH Level', labels, phData, 'cyan');
-                    createChart('tdsChart', 'TDS Level', labels, tdsData, 'magenta');
-                })
-                .catch(error => console.error('Error fetching data:', error));
+        if (range === 'day') {
+            specificValue = document.getElementById('specificDate').value;
+        } else if (range === 'week') {
+            specificValue = document.getElementById('specificWeek').value;
+        } else if (range === 'month') {
+            specificValue = document.getElementById('specificMonth').value;
+        } else if (range === 'year') {
+            specificValue = document.getElementById('specificYear').value;
         }
 
-        function createChart(canvasId, label, labels, data, color) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: data,
-                        borderColor: color,
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1
-                    }]
+        // Build the API URL with query parameters
+        const url = new URL('https://lehydrosys-sqfy.onrender.com/api/get_sensor_data');
+        url.searchParams.append('range', range);
+        if (specificValue) {
+            url.searchParams.append('specific', specificValue);
+        }
+
+        // Fetch data from the server
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (!data || data.length === 0) {
+                    alert('No data available for the selected range.');
+                    return;
+                }
+
+                const labels = data.map(item => item.timestamp);
+                const tempData = data.map(item => item.temperature);
+                const humidityData = data.map(item => item.humidity);
+                const waterTempData = data.map(item => item.waterTemp);
+                const waterLevelData = data.map(item => item.distance);
+                const phData = data.map(item => item.ph);
+                const tdsData = data.map(item => item.tds);
+
+                // Create or update charts
+                createOrUpdateChart('tempChart', 'Air Temperature', labels, tempData, 'red');
+                createOrUpdateChart('humidityChart', 'Humidity', labels, humidityData, 'green');
+                createOrUpdateChart('waterTempChart', 'Water Temperature', labels, waterTempData, 'blue');
+                createOrUpdateChart('waterLevelChart', 'Water Level', labels, waterLevelData, 'yellow');
+                createOrUpdateChart('phChart', 'pH Level', labels, phData, 'cyan');
+                createOrUpdateChart('tdsChart', 'TDS Level', labels, tdsData, 'magenta');
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    }
+
+    function createOrUpdateChart(canvasId, label, labels, data, color) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        // Destroy the existing chart if it exists
+        if (charts[canvasId]) {
+            charts[canvasId].destroy();
+        }
+
+        // Create a new chart and store its reference
+        charts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: color,
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
+                scales: {
+                    x: {
+                        title: {
                             display: true,
-                            position: 'top'
+                            text: 'Timestamp'
                         }
                     },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Timestamp'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: label
-                            }
+                    y: {
+                        title: {
+                            display: true,
+                            text: label
                         }
                     }
                 }
-            });
-        }
-    </script>
+            }
+        });
+    }
+</script>
 </body>
 </html>
