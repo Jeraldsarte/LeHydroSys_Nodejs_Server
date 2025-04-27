@@ -56,55 +56,44 @@ router.get('/get_commands', (req, res) => {
     });
 });
 
-// Add route to get sensor data based on the selected time range
-router.get('/get_sensor_data', (req, res) => {
-    const range = req.query.range || 'day'; // Default to 'day' if not provided
-    const query = buildQueryForTimeRange(range);
+router.get('/api/get_sensor_data', (req, res) => {
+    const { range, limit = 100, offset = 0 } = req.query;
 
-    db.query(query, (err, results) => {
-        if (err) return res.status(500).send(err);
+    // Adjust the query based on the range (e.g., day, week, month)
+    const query = `
+        SELECT temperature, humidity, waterTemp, tds, ph, distance, timestamp
+        FROM sensor_data
+        WHERE timestamp BETWEEN ? AND ?
+        ORDER BY timestamp ASC
+        LIMIT ? OFFSET ?;
+    `;
 
-        // Map the results to the format expected by the Android app
-        const data = results.map(row => ({
-            air_temp: row.air_temp,
-            humidity: row.humidity,
-            water_temp: row.water_temp,
-            water_level: row.water_level,
-            ph: row.ph,
-            tds: row.tds,
-            timestamp: row.timestamp // Include timestamp if needed for graph plotting
-        }));
+    const startDate = getStartDateForRange(range); // Function to calculate start date
+    const endDate = new Date();
 
-        res.json(data); // Return the sensor data as JSON
+    db.query(query, [startDate, endDate, parseInt(limit), parseInt(offset)], (err, results) => {
+        if (err) {
+            console.error('❌ Error fetching data:', err);
+            return res.status(500).json({ error: 'Error fetching data' });
+        }
+        res.json(results);
     });
 });
 
-// Helper function to build the query for different time ranges
-function buildQueryForTimeRange(range) {
-    let query = 'SELECT * FROM sensor_data';
-
-    const currentDate = new Date();
-    let startDate;
-
+function getStartDateForRange(range) {
+    const now = new Date();
     switch (range) {
-        case 'week':
-            startDate = new Date(currentDate.setDate(currentDate.getDate() - 7));
-            break;
-        case 'month':
-            startDate = new Date(currentDate.setMonth(currentDate.getMonth() - 1));
-            break;
-        case 'year':
-            startDate = new Date(currentDate.setFullYear(currentDate.getFullYear() - 1));
-            break;
         case 'day':
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        case 'week':
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        case 'month':
+            return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        case 'year':
+            return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
         default:
-            startDate = new Date(currentDate.setHours(0, 0, 0, 0)); // Midnight of today
-            break;
+            return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     }
-
-    query += ` WHERE timestamp >= '${startDate.toISOString()}' ORDER BY timestamp`;
-
-    return query;
 }
 
 module.exports = router;
