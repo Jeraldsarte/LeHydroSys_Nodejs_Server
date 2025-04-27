@@ -74,9 +74,8 @@ client.on('message', (topic, message) => {
         }
 
         // Get the current timestamp in the Philippines' time zone (UTC+8)
-        // Get the current timestamp in the Philippines' time zone (UTC+8)
         const now = new Date();
-        const philippinesTime = now.toLocaleString('en-US', {
+        const philippinesTime = now.toLocaleString('en-CA', {
             timeZone: 'Asia/Manila',
             year: 'numeric',
             month: '2-digit',
@@ -88,7 +87,8 @@ client.on('message', (topic, message) => {
         });
 
         // Format the timestamp for MySQL (YYYY-MM-DD HH:mm:ss)
-        const formattedTimestamp = philippinesTime.replace(',', '').replace(/\//g, '-');
+        const formattedTimestamp = philippinesTime.replace('T', ' ');
+
         // Insert into DB
         const query = `
             INSERT INTO sensor_data (temperature, humidity, waterTemp, tds, ph, distance, timestamp)
