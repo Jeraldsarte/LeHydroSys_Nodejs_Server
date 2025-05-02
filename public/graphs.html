@@ -75,14 +75,23 @@
     // Global variables to store chart instances
     const charts = {};
 
-    // Show appropriate input field based on range selection
+    // Show appropriate input field based on range selection and fetch data automatically
     document.getElementById('range').addEventListener('change', function () {
         const range = this.value;
         document.getElementById('specificDate').style.display = range === 'day' ? 'inline-block' : 'none';
         document.getElementById('specificWeek').style.display = range === 'week' ? 'inline-block' : 'none';
         document.getElementById('specificMonth').style.display = range === 'month' ? 'inline-block' : 'none';
         document.getElementById('specificYear').style.display = range === 'year' ? 'inline-block' : 'none';
+
+        // Automatically fetch and display data when the range changes
+        fetchAndDisplayData();
     });
+
+    // Add event listeners to specific input fields to fetch data automatically
+    document.getElementById('specificDate').addEventListener('change', fetchAndDisplayData);
+    document.getElementById('specificWeek').addEventListener('change', fetchAndDisplayData);
+    document.getElementById('specificMonth').addEventListener('change', fetchAndDisplayData);
+    document.getElementById('specificYear').addEventListener('input', fetchAndDisplayData);
 
     // Fetch and display data based on user selection
     function fetchAndDisplayData() {
