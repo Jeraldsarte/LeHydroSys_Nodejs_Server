@@ -8,6 +8,16 @@ function toPhilippinesTime(date) {
     return new Date(date.getTime() + offset * 60 * 1000);
 }
 
+router.post('/register_token', (req, res) => {
+    const { fcmToken } = req.body;
+    // Save fcmToken to your database, associated with the user/device
+    // Example for MySQL:
+    db.query('INSERT INTO fcm_tokens (token) VALUES (?) ON DUPLICATE KEY UPDATE token=?', [fcmToken, fcmToken], (err) => {
+        if (err) return res.status(500).json({ error: 'DB error' });
+        res.json({ success: true });
+    });
+});
+
 // Get latest sensor data
 router.get('/data/latest', (req, res) => {
     db.query('SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1', (err, results) => {

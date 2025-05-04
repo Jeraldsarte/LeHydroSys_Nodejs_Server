@@ -72,6 +72,69 @@ client.on('message', (topic, message) => {
             throw new Error("Invalid sensor data (NaN values)");
         }
 
+        // Optimal ranges for lettuce (hydroponics)
+        const OPTIMAL = {
+            temperature: { min: 18, max: 24 },      // Air Temperature °C
+            humidity: { min: 50, max: 70 },         // Relative Humidity %
+            waterTemp: { min: 18, max: 22 },        // Water Temperature °C
+            ph: { min: 5.5, max: 6.5 },             // pH Level
+            tds: { min: 560, max: 840 },            // TDS ppm
+            waterLevel: { min: 30, max: 50 }        // Water Level % 
+        };
+        
+        const sendNotification = require('./sendNotification');
+
+        // Fetch the latest FCM token from the database
+        db.query('SELECT token FROM fcm_tokens LIMIT 1', (err, results) => {
+            if (!err && results.length > 0) {
+                const userFcmToken = results[0].token;
+
+                // Check each parameter and send notification if out of range
+                if (temperature < OPTIMAL.temperature.min || temperature > OPTIMAL.temperature.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'Air Temperature Alert',
+                        `Air temperature is ${temperature}°C. Optimal: ${OPTIMAL.temperature.min}–${OPTIMAL.temperature.max}°C`
+                    );
+                }
+                if (humidity < OPTIMAL.humidity.min || humidity > OPTIMAL.humidity.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'Humidity Alert',
+                        `Humidity is ${humidity}%. Optimal: ${OPTIMAL.humidity.min}–${OPTIMAL.humidity.max}%`
+                    );
+                }
+                if (waterTemp < OPTIMAL.waterTemp.min || waterTemp > OPTIMAL.waterTemp.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'Water Temperature Alert',
+                        `Water temperature is ${waterTemp}°C. Optimal: ${OPTIMAL.waterTemp.min}–${OPTIMAL.waterTemp.max}°C`
+                    );
+                }
+                if (ph < OPTIMAL.ph.min || ph > OPTIMAL.ph.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'pH Level Alert',
+                        `pH level is ${ph}. Optimal: ${OPTIMAL.ph.min}–${OPTIMAL.ph.max}`
+                    );
+                }
+                if (tds < OPTIMAL.tds.min || tds > OPTIMAL.tds.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'TDS Alert',
+                        `TDS is ${tds} ppm. Optimal: ${OPTIMAL.tds.min}–${OPTIMAL.tds.max} ppm`
+                    );
+                }
+                if (waterLevel < OPTIMAL.waterLevel.min || tds > OPTIMAL.waterLevel.max) {
+                    sendNotification(
+                        userFcmToken,
+                        'TDS Alert',
+                        `Water Level is ${tds} %. Optimal: ${OPTIMAL.tds.min}–${OPTIMAL.tds.max} %`
+                    );
+                }
+            }
+        });
+
         // Get the current timestamp in the Philippines' time zone (UTC+8)
         const now = new Date();
         const philippinesTime = now.toLocaleString('en-CA', {
