@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LeHydroSys Graphs</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="echarts.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,15 +14,14 @@
         .chart-container {
             width: 90%;
             margin: 20px auto;
-        }
-        canvas {
-            max-width: 100%;
+            height: 400px; /* Set a fixed height for ECharts containers */
+            padding-bottom  : 20px; /* Add margin to the bottom of each chart */
         }
         .controls {
             text-align: center;
             margin: 20px;
         }
-        select, button {
+        select, input, button {
             padding: 10px;
             margin: 5px;
             font-size: 16px;
@@ -48,50 +47,33 @@
         <input type="month" id="specificMonth" style="display: none;">
         <input type="number" id="specificYear" placeholder="Year" style="display: none;">
 
-        <button onclick="fetchAndDisplayData()">View Data</button>
+        <!-- Add the "View Data" button -->
+        <button id="viewDataButton">View Data</button>
     </div>
 
     <!-- Graphs -->
-    <div class="chart-container">
-        <canvas id="tempChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="humidityChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="waterTempChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="waterLevelChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="phChart"></canvas>
-    </div>
-    <div class="chart-container">
-        <canvas id="tdsChart"></canvas>
-    </div>
+    <div class="chart-container" id="tempChart"></div>
+    <div class="chart-container" id="humidityChart"></div>
+    <div class="chart-container" id="waterTempChart"></div>
+    <div class="chart-container" id="waterLevelChart"></div>
+    <div class="chart-container" id="phChart"></div>
+    <div class="chart-container" id="tdsChart"></div>
 
 <script>
     // Global variables to store chart instances
     const charts = {};
 
-    // Show appropriate input field based on range selection and fetch data automatically
+    // Show appropriate input field based on range selection
     document.getElementById('range').addEventListener('change', function () {
         const range = this.value;
         document.getElementById('specificDate').style.display = range === 'day' ? 'inline-block' : 'none';
         document.getElementById('specificWeek').style.display = range === 'week' ? 'inline-block' : 'none';
         document.getElementById('specificMonth').style.display = range === 'month' ? 'inline-block' : 'none';
         document.getElementById('specificYear').style.display = range === 'year' ? 'inline-block' : 'none';
-
-        // Automatically fetch and display data when the range changes
-        fetchAndDisplayData();
     });
 
-    // Add event listeners to specific input fields to fetch data automatically
-    document.getElementById('specificDate').addEventListener('change', fetchAndDisplayData);
-    document.getElementById('specificWeek').addEventListener('change', fetchAndDisplayData);
-    document.getElementById('specificMonth').addEventListener('change', fetchAndDisplayData);
-    document.getElementById('specificYear').addEventListener('input', fetchAndDisplayData);
+    // Add event listener to the "View Data" button
+    document.getElementById('viewDataButton').addEventListener('click', fetchAndDisplayData);
 
     // Fetch and display data based on user selection
     function fetchAndDisplayData() {
@@ -143,53 +125,79 @@
             .catch(error => console.error('Error fetching data:', error));
     }
 
-    function createOrUpdateChart(canvasId, label, labels, data, color) {
-        const ctx = document.getElementById(canvasId).getContext('2d');
+    function createOrUpdateChart(containerId, title, labels, data, color) {
+    const chartDom = document.getElementById(containerId);
 
-        // Destroy the existing chart if it exists
-        if (charts[canvasId]) {
-            charts[canvasId].destroy();
-        }
-
-        // Create a new chart and store its reference
-        charts[canvasId] = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: label,
-                    data: data,
-                    borderColor: color,
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Timestamp'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: label
-                        }
-                    }
-                }
-            }
-        });
+    // Destroy the existing chart if it exists
+    if (charts[containerId]) {
+        charts[containerId].dispose();
     }
+
+    // Initialize the chart
+    const chart = echarts.init(chartDom);
+    charts[containerId] = chart;
+
+    // Set chart options
+    const options = {
+        title: {
+            text: title,
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'axis'
+        },
+        grid: {
+            left: '10%',   // Space on the left
+            right: '10%',  // Space on the right
+            top: '15%',    // Space at the top
+            bottom: '40%'  // Increase space at the bottom for x-axis labels
+        },
+        xAxis: {
+            type: 'category',
+            data: labels,
+            name: 'Timestamp',
+            axisLabel: {
+                interval: Math.ceil(labels.length / 10), // Show fewer labels (adjust based on data size)
+                rotate: 45, // Rotate labels for better readability
+                formatter: function (value) {
+            return value.length > 10 ? value.substring(0, 10) + '...' : value;
+        }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: title
+        },
+        dataZoom: [
+            {
+                type: 'slider', // Add a slider for zooming
+                start: 0, // Start at 0%
+                end: 100, // End at 100%
+                bottom: 20
+            },
+            {
+                type: 'inside', // Enable zooming via mouse scroll or touch gestures
+                start: 0,
+                end: 100
+            }
+        ],
+        series: [
+            {
+                data: data,
+                type: 'line',
+                smooth: true, // Smooth the line
+                sampling: 'average', // Compress data points by averaging
+                lineStyle: {
+                    color: color
+                },
+                showSymbol: false // Hide symbols for individual points to reduce clutter
+            }
+        ]
+    };
+
+    // Set the options and render the chart
+    chart.setOption(options);
+}
 </script>
 </body>
 </html>

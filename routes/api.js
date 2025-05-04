@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Helper function to convert a date to the Philippines timezone
+function toPhilippinesTime(date) {
+    const offset = 8 * 60; // UTC+8 in minutes
+    return new Date(date.getTime() + offset * 60 * 1000);
+}
+
 // Get latest sensor data
 router.get('/data/latest', (req, res) => {
     db.query('SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1', (err, results) => {
@@ -56,44 +62,58 @@ router.get('/get_commands', (req, res) => {
     });
 });
 
+/// Get sensor data
 router.get('/get_sensor_data', (req, res) => {
-    const { range, specific, limit = 100, offset = 0 } = req.query;
+    const { range, specific, limit = 10000, offset = 0 } = req.query;
 
     let query = `
         SELECT temperature, humidity, waterTemp, tds, ph, distance, timestamp
         FROM sensor_data
         WHERE timestamp BETWEEN ? AND ?
-        ORDER BY timestamp ASC
-        LIMIT ? OFFSET ?;
+        ORDER BY timestamp ASC;
     `;
 
     let startDate, endDate;
     if (specific) {
         if (range === 'day') {
             startDate = new Date(specific);
+            startDate.setHours(0, 0, 0, 0); // Set to 12:00 AM
             endDate = new Date(specific);
-            endDate.setDate(endDate.getDate() + 1);
+            endDate.setHours(23, 59, 59, 999); // Set to 11:59 PM
         } else if (range === 'week') {
             const [year, week] = specific.split('-W');
             const firstDayOfWeek = new Date(year, 0, (week - 1) * 7 + 1);
             startDate = firstDayOfWeek;
             endDate = new Date(firstDayOfWeek);
-            endDate.setDate(endDate.getDate() + 7);
+            endDate.setDate(endDate.getDate() + 6); // End of the week
         } else if (range === 'month') {
             startDate = new Date(specific + '-01');
+            startDate.setHours(0, 0, 0, 0); // Start of the month
             endDate = new Date(startDate);
             endDate.setMonth(endDate.getMonth() + 1);
+            endDate.setDate(0); // Last day of the month
+            endDate.setHours(23, 59, 59, 999); // End of the month
         } else if (range === 'year') {
             startDate = new Date(specific + '-01-01');
+            startDate.setHours(0, 0, 0, 0); // Start of the year
             endDate = new Date(startDate);
             endDate.setFullYear(endDate.getFullYear() + 1);
+            endDate.setDate(0); // Last day of the year
+            endDate.setHours(23, 59, 59, 999); // End of the year
         }
     } else {
         startDate = getStartDateForRange(range);
         endDate = new Date();
     }
 
-    db.query(query, [startDate, endDate, parseInt(limit), parseInt(offset)], (err, results) => {
+    // Convert startDate and endDate to UTC
+    startDate = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000);
+    endDate = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
+
+    console.log('Start Date (UTC):', startDate);
+    console.log('End Date (UTC):', endDate);
+
+    db.query(query, [startDate, endDate], (err, results) => {
         if (err) {
             console.error('❌ Error fetching data:', err);
             return res.status(500).json({ error: 'Error fetching data' });
