@@ -30,6 +30,28 @@ router.post('/register_token', (req, res) => {
     );
 });
 
+app.get('/api/relay-status', (req, res) => {
+    const sql = `
+        SELECT rs.relay_name, rs.status, rs.timestamp
+        FROM relay_status rs
+        JOIN (
+            SELECT relay_name, MAX(timestamp) as max_time
+            FROM relay_status
+            GROUP BY relay_name
+        ) latest
+        ON rs.relay_name = latest.relay_name AND rs.timestamp = latest.max_time
+    `;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('❌ Error fetching relay status:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json(results);
+    });
+});
+
+
 // Get latest sensor data
 router.get('/data/latest', (req, res) => {
     db.query('SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1', (err, results) => {

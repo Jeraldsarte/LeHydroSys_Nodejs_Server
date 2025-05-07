@@ -126,77 +126,65 @@
     }
 
     function createOrUpdateChart(containerId, title, labels, data, color) {
-    const chartDom = document.getElementById(containerId);
+        const chartDom = document.getElementById(containerId);
 
-    // Destroy the existing chart if it exists
-    if (charts[containerId]) {
-        charts[containerId].dispose();
+        // Destroy the existing chart if it exists
+        if (charts[containerId]) {
+            charts[containerId].dispose();
+        }
+
+        // Initialize the chart
+        const chart = echarts.init(chartDom);
+        charts[containerId] = chart;
+
+        // Set chart options
+        const options = {
+            title: {
+                text: title,
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'axis'
+            },
+            grid: {
+                left: '10%',   // Space on the left
+                right: '10%',  // Space on the right
+                top: '15%',    // Space at the top
+                bottom: '40%'  // Increase space at the bottom for x-axis labels
+            },
+            xAxis: {
+                type: 'category',
+                data: labels,
+                name: 'Timestamp',
+                axisLabel: {
+                    interval: Math.ceil(labels.length / 10), // Show fewer labels (adjust based on data size)
+                    rotate: 45, // Rotate labels for better readability
+                    formatter: function (value) {
+                        return value.length > 10 ? value.substring(0, 10) + '...' : value;
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    data: data,
+                    type: 'line',
+                    smooth: true, // Smooth the line
+                    sampling: 'average', // Compress data points by averaging
+                    lineStyle: {
+                        color: color
+                    },
+                    showSymbol: false // Hide symbols for individual points to reduce clutter
+                }
+            ]
+        };
+
+        // Set the options and render the chart
+        chart.setOption(options);
     }
 
-    // Initialize the chart
-    const chart = echarts.init(chartDom);
-    charts[containerId] = chart;
-
-    // Set chart options
-    const options = {
-        title: {
-            text: title,
-            left: 'center'
-        },
-        tooltip: {
-            trigger: 'axis'
-        },
-        grid: {
-            left: '10%',   // Space on the left
-            right: '10%',  // Space on the right
-            top: '15%',    // Space at the top
-            bottom: '40%'  // Increase space at the bottom for x-axis labels
-        },
-        xAxis: {
-            type: 'category',
-            data: labels,
-            name: 'Timestamp',
-            axisLabel: {
-                interval: Math.ceil(labels.length / 10), // Show fewer labels (adjust based on data size)
-                rotate: 45, // Rotate labels for better readability
-                formatter: function (value) {
-            return value.length > 10 ? value.substring(0, 10) + '...' : value;
-        }
-            }
-        },
-        yAxis: {
-            type: 'value'
-        },
-        dataZoom: [
-            {
-                type: 'slider', // Add a slider for zooming
-                start: 0, // Start at 0%
-                end: 100, // End at 100%
-                bottom: 20
-            },
-            {
-                type: 'inside', // Enable zooming via mouse scroll or touch gestures
-                start: 0,
-                end: 100
-            }
-        ],
-        series: [
-            {
-                data: data,
-                type: 'line',
-                smooth: true, // Smooth the line
-                sampling: 'average', // Compress data points by averaging
-                lineStyle: {
-                    color: color
-                },
-                showSymbol: false // Hide symbols for individual points to reduce clutter
-            }
-        ]
-    };
-
-    // Set the options and render the chart
-    chart.setOption(options);
-}
 </script>
 </body>
 </html>
