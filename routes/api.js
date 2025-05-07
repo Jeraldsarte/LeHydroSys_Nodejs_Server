@@ -30,7 +30,7 @@ router.post('/register_token', (req, res) => {
     );
 });
 
-app.get('/api/relay-status', (req, res) => {
+router.get('/api/relay-status', (req, res) => {
     const sql = `
         SELECT rs.relay_name, rs.status, rs.timestamp
         FROM relay_status rs
