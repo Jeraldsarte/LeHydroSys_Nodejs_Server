@@ -51,7 +51,6 @@ app.get('/api/relay-status', (req, res) => {
     });
 });
 
-
 // Get latest sensor data
 router.get('/data/latest', (req, res) => {
     db.query('SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1', (err, results) => {
@@ -105,6 +104,20 @@ router.get('/get_commands', (req, res) => {
         }
     });
 });
+
+  router.post('/control', (req, res) => {
+    const { relay, state } = req.body;
+
+    let topic;
+    if (relay === 'relay1') topic = 'LeHydroSys/Relay1Control';
+    else if (relay === 'relay2') topic = 'LeHydroSys/Relay2Control';
+    else return res.status(400).send('Unknown relay');
+
+    mqttClient.publish(topic, state.toUpperCase(), (err) => {
+      if (err) return res.status(500).send('MQTT Error');
+      res.status(200).send('Relay command sent');
+    });
+  });
 
 /// Get sensor data
 router.get('/get_sensor_data', (req, res) => {
