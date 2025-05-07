@@ -9,13 +9,25 @@ function toPhilippinesTime(date) {
 }
 
 router.post('/register_token', (req, res) => {
-    const { fcmToken } = req.body;
-    // Save fcmToken to your database, associated with the user/device
-    // Example for MySQL:
-    db.query('INSERT INTO fcm_tokens (token) VALUES (?) ON DUPLICATE KEY UPDATE token=?', [fcmToken, fcmToken], (err) => {
-        if (err) return res.status(500).json({ error: 'DB error' });
-        res.json({ success: true });
-    });
+    const { fcmToken, userId } = req.body; // Assuming you're sending userId along with the token
+
+    if (!fcmToken || !userId) {
+        return res.status(400).json({ error: 'FCM token and user ID are required' });
+    }
+
+    // Example: Save the token along with the user ID in the database
+    db.query(
+        'INSERT INTO fcm_tokens (user_id, token) VALUES (?, ?) ON DUPLICATE KEY UPDATE token=?',
+        [userId, fcmToken, fcmToken], // Update token if it already exists for the same user
+        (err) => {
+            if (err) {
+                console.error('Error saving token:', err); // Log the error for debugging
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            res.json({ success: true, message: 'Token registered successfully' });
+        }
+    );
 });
 
 // Get latest sensor data

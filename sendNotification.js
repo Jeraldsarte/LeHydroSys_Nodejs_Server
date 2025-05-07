@@ -1,13 +1,20 @@
 const admin = require('firebase-admin');
-const path = require('path');
 
-// Initialize Firebase Admin SDK
-const serviceAccount = require(path.join(__dirname, 'serviceAccountKey.json'));
+let firebaseInitialized = false;
 
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
+/**
+ * Initialize Firebase Admin SDK with a service account JSON string.
+ * Only initializes once per process.
+ * @param {string} serviceAccountJsonString
+ */
+function initializeFirebase(serviceAccountJsonString) {
+    if (!firebaseInitialized) {
+        const serviceAccount = JSON.parse(serviceAccountJsonString);
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        firebaseInitialized = true;
+    }
 }
 
 /**
@@ -15,8 +22,11 @@ if (!admin.apps.length) {
  * @param {string} token - FCM device token
  * @param {string} title - Notification title
  * @param {string} body - Notification body
+ * @param {string} serviceAccountJsonString - The service account JSON string from the database
  */
-function sendNotification(token, title, body) {
+function sendNotification(token, title, body, serviceAccountJsonString) {
+    initializeFirebase(serviceAccountJsonString);
+
     const message = {
         notification: {
             title,
@@ -35,7 +45,3 @@ function sendNotification(token, title, body) {
 }
 
 module.exports = sendNotification;
-
-// Example usage (uncomment to test):
-// const testToken = 'YOUR_DEVICE_FCM_TOKEN';
-// sendNotification(testToken, 'Test Title', 'Test Body');
