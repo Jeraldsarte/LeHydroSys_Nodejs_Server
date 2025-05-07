@@ -1,6 +1,6 @@
 const mqtt = require('mqtt');
 const fs = require('fs');
-const db = require('./db');
+const { db } = require('./db');
 require('dotenv').config();
 
 // Read CA certificate
