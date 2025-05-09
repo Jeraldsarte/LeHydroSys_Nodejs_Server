@@ -30,27 +30,6 @@ router.post('/register_token', (req, res) => {
     );
 });
 
-router.get('/api/relay-status', (req, res) => {
-    const sql = `
-        SELECT rs.relay_name, rs.status, rs.timestamp
-        FROM relay_status rs
-        JOIN (
-            SELECT relay_name, MAX(timestamp) as max_time
-            FROM relay_status
-            GROUP BY relay_name
-        ) latest
-        ON rs.relay_name = latest.relay_name AND rs.timestamp = latest.max_time
-    `;
-
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error('❌ Error fetching relay status:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json(results);
-    });
-});
-
 // Get latest sensor data
 router.get('/data/latest', (req, res) => {
     db.query('SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT 1', (err, results) => {
@@ -59,65 +38,6 @@ router.get('/data/latest', (req, res) => {
     });
 });
 
-// Post relay command
-router.post('/relay', (req, res) => {
-    const { relay1, relay2 } = req.body;
-    const query = 'UPDATE relay_state SET relay1 = ?, relay2 = ?, last_updated = NOW() WHERE id = 1';
-    db.query(query, [relay1, relay2], (err) => {
-        if (err) return res.status(500).send(err);
-        res.send('Relay state updated');
-    });
-});
-
-// Get relay state
-router.get('/relay', (req, res) => {
-    db.query('SELECT * FROM relay_state WHERE id = 1', (err, results) => {
-        if (err) return res.status(500).send(err);
-        res.json(results[0]);
-    });
-});
-
-let lastFetchTime = null; // Store the last fetch time for the ESP32
-
-router.get('/get_commands', (req, res) => {
-    const query = 'SELECT relay1, relay2, last_updated FROM relay_state WHERE id = 1';
-    db.query(query, (err, results) => {
-        if (err) return res.status(500).send(err);
-
-        const { relay1, relay2, last_updated } = results[0];
-
-        // Check if the relay state was updated since the last fetch
-        if (!lastFetchTime || new Date(last_updated) > new Date(lastFetchTime)) {
-            const relay1Command = relay1 ? 'relay1_on' : 'relay1_off';
-            const relay2Command = relay2 ? 'relay2_on' : 'relay2_off';
-
-            // Update the last fetch time
-            lastFetchTime = last_updated;
-
-            res.json({
-                relay1: relay1Command,
-                relay2: relay2Command
-            });
-        } else {
-            // No updates, return an empty response
-            res.json({});
-        }
-    });
-});
-
-  router.post('/control', (req, res) => {
-    const { relay, state } = req.body;
-
-    let topic;
-    if (relay === 'relay1') topic = 'LeHydroSys/Relay1Control';
-    else if (relay === 'relay2') topic = 'LeHydroSys/Relay2Control';
-    else return res.status(400).send('Unknown relay');
-
-    mqttClient.publish(topic, state.toUpperCase(), (err) => {
-      if (err) return res.status(500).send('MQTT Error');
-      res.status(200).send('Relay command sent');
-    });
-  });
 
 /// Get sensor data
 router.get('/get_sensor_data', (req, res) => {
