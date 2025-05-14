@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-require('./mqttClient'); // Initialize MQTT client
+require('./mqttClient'); 
 const path = require('path');
-const { testDbConnection } = require('./db'); // Import database connection test
-const apiRouter = require('./routes/api'); // Import the API router
+const { testDbConnection } = require('./db'); 
+const apiRouter = require('./routes/api');
 
 const app = express();
 
